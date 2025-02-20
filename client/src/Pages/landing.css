@@ -1,0 +1,65 @@
+/* Gradient Background */
+.gradient-bg {
+    background: linear-gradient(to bottom, black 20%, #004d40 50%, #002147 90%);
+    color: white;
+  }
+  
+  /* Transparent Navbar */
+  .transparent-navbar {
+    background: rgba(0, 0, 0, 0.5); /* Semi-transparent */
+    backdrop-filter: blur(8px); /* Frosted glass effect */
+    transition: all 0.3s ease-in-out;
+  }
+  
+  /* Glow effect + Scale effect */
+  .hover-effect {
+    transition: transform 0.3s ease-in-out, color 0.3s ease-in-out;
+    cursor: pointer;
+  }
+  
+  .hover-effect:hover {
+    transform: scale(1.05);
+    color: #00ff99; /* Neon Green */
+  }
+  
+  /* Transparent Image Container */
+  .carousel-inner {
+    background: rgba(0, 0, 0, 0.3); /* Semi-transparent black */
+    padding: 10px;
+    border-radius: 10px;
+    backdrop-filter: blur(5px);
+  }
+  
+  /* Carousel Images */
+  .carousel-item img {
+    border-radius: 10px;
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .carousel-item img:hover {
+    transform: scale(1.05);
+  }
+  
+  /* Button Hover */
+  .btn-primary:hover {
+    background-color: #00cc99;
+    border-color: #00cc99;
+  }
+  
+  /* Profile Icon in Header */
+  .profile-container {
+    position: absolute;
+    right: 20px;
+  }
+  
+  .profile-icon {
+    height: 40px;
+    border-radius: 50%;
+    transition: transform 0.3s ease-in-out;
+    cursor: pointer;
+  }
+  
+  .profile-icon:hover {
+    transform: scale(1.1);
+  }
+  

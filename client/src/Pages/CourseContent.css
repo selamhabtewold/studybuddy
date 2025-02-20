@@ -1,0 +1,107 @@
+/* General Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* Container for the whole layout */
+  .course-container {
+    display: flex;
+    padding: 20px;
+    background: linear-gradient(135deg, #2b5876, #4e4376);
+    height: 100vh;
+    color: white;
+  }
+  
+  /* Sidebar styling */
+  .sidebar {
+    width: 200px;
+    padding: 10px;
+    background-color: #2b5876;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .sidebar-item {
+    background-color: #2b5876;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .sidebar-item:hover {
+    background-color: #4e4376;
+  }
+  
+  /* Content window styling */
+  .content-window {
+    flex-grow: 1;
+    margin-left: 20px;
+    /* Adjusting the height to fit the navigation bar */
+    height: calc(100vh - 80px); /* Subtracting space for nav bar and padding */
+    width: calc(100% - 240px);
+    background: linear-gradient(135deg, #2b5876, #4e4376);
+    padding: 20px;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* To push navigation to the bottom */
+  }
+  
+  /* Title text styling */
+  .content-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: white;
+    
+  
+  /* Button Styling */
+  button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  button:hover {
+    background-color: #0056b3;
+  }
+  
+  button:focus {
+    outline: none;
+  }
+  
+  /* Navigation styling */
+  .navigation {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 20px; /* Space above the navigation */
+  }
+  
+  /* Specific styling for navigation buttons */
+  .nav-button {
+    background-color: transparent;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  .nav-button:hover {
+    color: #0056b3;
+  }
+  
+  /* Positioning prev and next buttons within navigation */
+  .prev, .next {
+    position: static; /* Resetting position to normal flow */
+    }}
