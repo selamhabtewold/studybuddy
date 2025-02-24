@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/db.mjs";
 import userRoutes from "./routes/userRoutes.js"; // Import Routes
+import courseRoutes  from './routes/courseRoutes.js';
+import studyGroupRoutes  from './routes/studyGroupRoutes.js';
 
 
 // Load environment variables
@@ -36,7 +38,9 @@ app.options('*', cors());
 app.use(express.json());
 
 
-app.use("/api/users", userRoutes);
+app.use("/api", userRoutes);
+app.use("/api/courses", courseRoutes);
+app.use("/api/study-groups", studyGroupRoutes);
 
 
 // Server Port

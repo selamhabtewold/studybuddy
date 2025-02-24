@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -13,6 +13,13 @@ const courseDetails = {
 };
 
 const Courses = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter courses based on search input
+  const filteredCourses = Object.keys(courseDetails).filter((course) =>
+    courseDetails[course].title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div
       className="container-fluid min-vh-100 d-flex flex-column align-items-center justify-content-center text-white"
@@ -31,48 +38,54 @@ const Courses = () => {
           type="text"
           className="form-control bg-transparent border-0 text-white"
           placeholder="Search a Course"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)} // Update search query state
         />
       </div>
 
       {/* Course List */}
       <div className="row w-75">
-        {Object.keys(courseDetails).map((course) => (
-          <div key={course} className="col-md-4 mb-4">
-            <div
-              className="card text-white p-4 text-center shadow-lg"
-              style={{
-                backgroundColor: "#222",
-                height: "250px",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-              }}
-            >
-              <h5 className="fw-bold">{courseDetails[course].title}</h5>
-              <p className="text-light">{courseDetails[course].description}</p>
-              {/* Link to Course Description */}
-              <Link
-                to={`/course/${course}`}
-                className="btn fw-bold"
+        {filteredCourses.length > 0 ? (
+          filteredCourses.map((course) => (
+            <div key={course} className="col-md-4 mb-4">
+              <div
+                className="card text-white p-4 text-center shadow-lg"
                 style={{
-                  backgroundColor: "#0d6efd", // Matches "Start Course" button color
-                  color: "white",
-                  padding: "6px 15px", // Slightly smaller padding
-                  fontSize: "14px", // Reduced font size
-                  width: "80%", // Adjusted width
-                  maxWidth: "150px", // Ensures it doesn't get too wide
-                  borderRadius: "5px",
-                  transition: "background 0.3s ease-in-out",
-                  alignSelf: "center", // Centers the button
+                  backgroundColor: "#222",
+                  height: "250px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
                 }}
-                onMouseOver={(e) => (e.target.style.backgroundColor = "#198754")} // Matches green hover
-                onMouseOut={(e) => (e.target.style.backgroundColor = "#0d6efd")}
               >
-                Enroll
-              </Link>
+                <h5 className="fw-bold">{courseDetails[course].title}</h5>
+                <p className="text-light">{courseDetails[course].description}</p>
+                {/* Link to Course Description */}
+                <Link
+                  to={`/course/${course}`}
+                  className="btn fw-bold"
+                  style={{
+                    backgroundColor: "#0d6efd",
+                    color: "white",
+                    padding: "6px 15px",
+                    fontSize: "14px",
+                    width: "80%",
+                    maxWidth: "150px",
+                    borderRadius: "5px",
+                    transition: "background 0.3s ease-in-out",
+                    alignSelf: "center",
+                  }}
+                  onMouseOver={(e) => (e.target.style.backgroundColor = "#198754")}
+                  onMouseOut={(e) => (e.target.style.backgroundColor = "#0d6efd")}
+                >
+                  Enroll
+                </Link>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <h4 className="text-center mt-3">No courses found</h4>
+        )}
       </div>
     </div>
   );

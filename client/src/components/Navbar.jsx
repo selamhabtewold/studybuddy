@@ -1,25 +1,43 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom"; // Import useLocation for tracking
 import "bootstrap/dist/css/bootstrap.min.css";
 import RegistrationForm from "../Pages/RegistrationForm";
 
 const Navbar = () => {
   const [userEmail, setUserEmail] = useState("");
+  const [userId, setUserId] = useState(""); // Store userId
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showLogout, setShowLogout] = useState(false); // Controls logout visibility
+  const [showLogout, setShowLogout] = useState(false); 
+  const location = useLocation(); // Hook to track navigation
 
-  // Fetch the user email from local storage when component loads
+  // Fetch user details from localStorage when component loads
   useEffect(() => {
     const email = localStorage.getItem("userEmail");
-    if (email) {
-      setUserEmail(email);
-    }
+    const id = localStorage.getItem("userId"); // Fetch userId
+    if (email) setUserEmail(email);
+    if (id) setUserId(id);
   }, []);
+
+  // Track page navigation and send data to backend
+  useEffect(() => {
+    if (userId) {
+      console.log(`User ID: ${userId} navigated to ${location.pathname}`);
+
+      // Send tracking data to backend
+      fetch("http://localhost:5000/api/track-navigation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, page: location.pathname }),
+      });
+    }
+  }, [location.pathname, userId]); // Runs when user navigates
 
   // Logout function
   const handleLogout = () => {
     localStorage.removeItem("userEmail");
+    localStorage.removeItem("userId"); // Clear userId on logout
     setUserEmail("");
+    setUserId("");
     setShowLogout(false);
   };
 
@@ -48,23 +66,20 @@ const Navbar = () => {
           </button>
 
           <div className="collapse navbar-collapse d-flex justify-content-between" id="navbarNav">
-          <ul className="navbar-nav">
-            <li className="nav-item">
-              <Link className="nav-link hover-effect" to="/home">Home</Link>
-            </li>
+            <ul className="navbar-nav">
+              <li className="nav-item">
+                <Link className="nav-link hover-effect" to="/">Home</Link>
+              </li>
+              <li className="nav-item">
+                <Link className="nav-link hover-effect" to="/yourbuddy">Your Buddy</Link>
+              </li>
+              
+              <li className="nav-item">
+                <Link className="nav-link hover-effect" to="/courses">Courses</Link>
+              </li>
+            </ul>
 
-            <li className="nav-item">
-              <Link className="nav-link hover-effect" to="/yourbuddy">Your Buddy</Link> {/* This is the link to YourBuddy */}
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link hover-effect" to="/study-groups">Study Groups</Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link hover-effect" to="/courses">Courses</Link>
-            </li>
-          </ul>
-
-            {/* Profile Section with Email & Logout */}
+            {/* Profile Section with User Info */}
             <div className="profile-section text-center" 
               onMouseEnter={() => setShowLogout(true)}
               onMouseLeave={() => setShowLogout(false)}
@@ -77,11 +92,19 @@ const Navbar = () => {
                 style={{ display: "block", margin: "0 auto" }}
                 onClick={() => setIsModalOpen(true)}
               />
-              {/* Display user email if logged in */}
+              
+              {/* Display user email and ID */}
               {userEmail && (
-                <p className="user-email mt-1" style={{ fontSize: "14px", color: "#fff" }}>
-                  {userEmail}
-                </p>
+                <>
+                  <p className="user-email mt-1" style={{ fontSize: "14px", color: "#fff" }}>
+                    {userEmail}
+                  </p>
+                  {userId && (
+                    <p className="user-id mt-1" style={{ fontSize: "12px", color: "#ccc" }}>
+                      ID: {userId}
+                    </p>
+                  )}
+                </>
               )}
               
               {/* Show logout option when hovered */}
