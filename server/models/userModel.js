@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
     role: { type: String, enum: ["user", "admin"], default: "user" },
     interests:[{type: String}],
     subjects: [{type: String}],
+    isActive:{type: Boolean, default:false},
     joinedGroups: [{ type: mongoose.Schema.Types.ObjectId, ref: "StudyGroup" }],
 });
 

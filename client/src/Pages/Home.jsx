@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
-import "./landing.css";
-import LoginForm from "./LoginForm";
+import "./landing.css"; // Keep your custom CSS if needed
+import LoginForm from "../Pages/LoginForm";
+import Navbar from "../components/Navbar"; // Import the Navbar component
 
 const Home = () => {
   const navigate = useNavigate();
@@ -38,39 +39,124 @@ const Home = () => {
   }, [carouselItems.length]);
 
   return (
-    <div className="min-vh-100 gradient-bg">
-      <Outlet />
-      
-      <div className={`container text-white ${isLoginPage ? "blur-background" : ""}`}>
-        <div className="row align-items-center">
-          <div className="col-md-6">
-            <h1 className="display-4 mb-4">Welcome to Study Buddy</h1>
-            <p className="lead mb-4">
-              Your ultimate companion for productive studying. Join thousands of students who are achieving their goals with Study Buddy.
-            </p>
-            <button className="btn btn-primary btn-lg me-2" onClick={() => navigate("/register")}>
-              Get Started
-            </button>
-            <button className="btn btn-outline-light btn-lg" onClick={() => navigate("/login")}>
-              Login
-            </button>
-          </div>
+    <div
+      className="min-vh-100 d-flex flex-column position-relative"
+      style={{
+        backgroundColor: "#1a1a1a", // Retain dark background as base
+        fontFamily: "'Arial', sans-serif",
+        color: "#ffffff",
+        position: "relative",
+        overflow: "hidden", // Ensure carousel background stays within bounds
+      }}
+    >
+      {/* Navbar (kept as is, styled to match dark theme) */}
+      {/* <Navbar /> */}
 
-          <div className="col-md-6">
-            <div id="carouselExample" className="carousel slide" data-bs-ride="carousel">
-              <div className="carousel-inner">
-                {carouselItems.map((item, index) => (
-                  <div key={index} className={`carousel-item ${index === activeIndex ? "active" : ""}`}>
-                    <img src={item.image} className="d-block w-100 rounded" alt={item.title} />
-                    <div className="carousel-caption d-none d-md-block">
-                      <h3>{item.title}</h3>
-                      <p>{item.description}</p>
-                    </div>
-                  </div>
-                ))}
+      {/* Carousel as Background with Dark Overlay */}
+      <div
+        className={`position-absolute top-0 start-0 w-100 h-100 ${isLoginPage ? "blur-background" : ""}`}
+        style={{
+          zIndex: 0,
+          transition: "filter 0.3s ease-in-out",
+        }}
+      >
+        <div
+          className="carousel slide"
+          data-bs-ride="carousel"
+          style={{ height: "100%", width: "100%" }}
+        >
+          <div className="carousel-inner" style={{ height: "100%" }}>
+            {carouselItems.map((item, index) => (
+              <div
+                key={index}
+                className={`carousel-item ${index === activeIndex ? "active" : ""}`}
+                style={{ height: "100%" }}
+              >
+                <img
+                  src={item.image}
+                  className="d-block w-100"
+                  alt={item.title}
+                  style={{
+                    objectFit: "cover",
+                    height: "100vh",
+                    filter: "brightness(0.2)", // Slightly darkened for overlay contrast
+                  }}
+                />
               </div>
-            </div>
+            ))}
           </div>
+        </div>
+        {/* Dark Overlay */}
+        <div
+          className="position-absolute top-0 start-0 w-100 h-100"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.2)", // Dark semi-transparent overlay
+            zIndex: 1,
+          }}
+        />
+      </div>
+
+      {/* Main Content - Centered Layout with Overlay Content */}
+      <div
+        className="container py-5 flex-grow-1 d-flex flex-column justify-content-center align-items-center position-relative"
+        style={{
+          marginTop: "60px", // Adjusted for the Navbar height (assuming 60px)
+          maxWidth: "1200px",
+          zIndex: 2, // Ensure text/buttons are above the overlay
+          transition: "filter 0.3s ease-in-out",
+        }}
+      >
+        <div className="text-center mb-5">
+          <h1
+            className="mb-3"
+            style={{
+              fontSize: "3rem",
+              fontWeight: "700",
+              color: "#ffffff", // White text for contrast on dark overlay
+              textShadow: "2px 2px 4px rgba(0, 0, 0, 0.3)",
+            }}
+          >
+            Unlock Your Learning Potential with StuddyBuddy
+          </h1>
+          <p
+            className="mb-4"
+            style={{
+              fontSize: "1.2rem",
+              color: "#7f8c8d", // Light gray for subtitle, still visible on dark overlay
+              fontWeight: "400",
+              maxWidth: "600px",
+              margin: "0 auto",
+            }}
+          >
+            Join a community of learners, access powerful tools, and achieve your goals—start your journey today!
+          </p>
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={() => navigate("/login")}
+            style={{
+              backgroundColor: "#d426ff", // Purple accent from the current design
+              borderColor: "#d426ff",
+              padding: "0.75rem 2rem",
+              fontSize: "1.1rem",
+              borderRadius: "8px",
+              transition: "background-color 0.3s ease, transform 0.2s ease",
+              boxShadow: "0 4px 12px rgba(212, 38, 255, 0.3)",
+              position: "relative",
+              overflow: "hidden",
+              zIndex: 3, // Ensure button is above overlay
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = "#b31cff";
+              e.target.style.transform = "scale(1.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = "#d426ff";
+              e.target.style.transform = "scale(1)";
+            }}
+            aria-label="Start learning with StudyBuddy"
+          >
+            Get Started
+          </button>
         </div>
       </div>
 
@@ -84,6 +170,24 @@ const Home = () => {
           .blur-background {
             filter: blur(5px);
             transition: filter 0.3s ease-in-out;
+          }
+          .gradient-bg {
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+          }
+          @media (max-width: 768px) {
+            h1 {
+              font-size: 2rem;
+            }
+            p {
+              font-size: 1rem;
+            }
+            .btn-lg {
+              padding: 0.5rem 1.5rem;
+              font-size: 1rem;
+            }
+            .min-vh-100 .carousel-item img {
+              height: 100vh;
+            }
           }
         `}
       </style>

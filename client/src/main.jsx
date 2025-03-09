@@ -1,10 +1,17 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./index.css";
-import App from "./App"; // Import App instead of Layout
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom"; 
+import App from "./App";
+import { UserProvider } from "./context/UserContext"; 
+import { OnlineUsersProvider } from "./context/OnlineUsersContext";
 
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <App /> {/* Ensure App is rendered, so routing works */}
-  </StrictMode>
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <BrowserRouter> {/* ✅ Router is here, so don't use another one in `App.js` */}
+    <UserProvider>
+      <OnlineUsersProvider>
+      <App />
+      </OnlineUsersProvider>
+    
+    </UserProvider>
+  </BrowserRouter>
 );

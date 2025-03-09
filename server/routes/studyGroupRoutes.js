@@ -1,73 +1,73 @@
-import  express from "express";
-import StudyGroup from "../models/studyGroup.js";
-import  User from "../models/userModel.js";
-
-
-
+import express from "express";
+import StudyGroup from "../models/studyGroup.js"; // Ensure this path is correct
+import User from "../models/userModel.js";
 import authenticateUser from "../middleware/authMiddleware.js"; // Import middleware
-
+import mongoose from "mongoose"; // Ensure mongoose is imported correctly
 
 const router = express.Router();
 
-router.post("/join/:groupId", authenticateUser, async (req, res) => {
+// Get a specific study group by ID (for member count and details)
+router.get("/:groupId", async (req, res) => {
   try {
-    const group = await StudyGroup.findById(req.params.groupId);
+    const group = await StudyGroup.findById(req.params.groupId).select("name members membersCount image description");
     if (!group) return res.status(404).json({ message: "Group not found" });
-
-    if (!group.members.includes(req.userId)) {
-      group.members.push(req.userId);
-      await group.save();
-    }
-
-    res.json({ message: "Joined successfully", user: req.userId });
+    res.json(group);
   } catch (error) {
-    res.status(500).json({ message: "Error joining study group" });
+    res.status(500).json({ message: "Error fetching group" });
   }
 });
 
-
 // Join a study group
 // router.post("/join/:groupId", async (req, res) => {
-//   try {
-//     const { groupId } = req.params;
-//     const { userId } = req.body;
+//   const { userId } = req.body;
+//   const { groupId } = req.params;
 
-//     // Validate MongoDB ObjectId
+//   try {
+//     const group = await StudyGroup.findById(groupId);
+//     if (!group) return res.status(404).json({ message: "Group not found" });
+
+//     // Ensure members is an array, default to empty if undefined
+//     if (!Array.isArray(group.members)) {
+//       group.members = [];
+//     }
+
+//     // Check if user is already a member (to prevent duplicates)
+//     if (group.members.includes(userId)) {
+//       return res.status(400).json({ message: "You are already a member of this group" });
+//     }
+
+//     // Validate MongoDB ObjectId using mongoose
 //     if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(userId)) {
 //       return res.status(400).json({ message: "Invalid group ID or user ID" });
 //     }
 
-//     const group = await StudyGroup.findById(groupId);
 //     const user = await User.findById(userId);
-
-//     if (!group) {
-//       return res.status(404).json({ message: "Study group not found" });
-//     }
-    
 //     if (!user) {
 //       return res.status(404).json({ message: "User not found" });
 //     }
 
-//     // Check if user already joined
-//     if (group.members.includes(userId)) {
-//       return res.status(400).json({ message: "User already in the group" });
-//     }
-
-//     // Add user to the group
+//     // Add user to members array and update count
 //     group.members.push(userId);
+//     group.membersCount = group.members.length; // Update count to match array length
 //     await group.save();
 
-//     // Send the updated group data
-//     res.json(group);
+//     res.status(200).json({ group: { _id: groupId, members: group.members, membersCount: group.membersCount } });
 //   } catch (error) {
 //     console.error("Error joining study group:", error);
-//     res.status(500).json({ message: "Internal Server Error" });
+//     res.status(500).json({ message: error.message });
 //   }
 // });
 
+router.get("/", async (req, res) => {
+  try {
+    const groups = await StudyGroup.find().select("name membersCount image description");
+    res.json(groups);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching groups" });
+  }
+});
 
-
-// ✅ Get all study groups
+// Get all study groups with populated members
 router.get("/", async (req, res) => {
   try {
     const groups = await StudyGroup.find().populate("members", "name email");
@@ -77,7 +77,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ Get study groups by subject (recommendation)
+// Get study groups by subject (recommendation)
 router.get("/subject/:subject", async (req, res) => {
   try {
     const groups = await StudyGroup.find({ subject: req.params.subject });
@@ -87,7 +87,7 @@ router.get("/subject/:subject", async (req, res) => {
   }
 });
 
-// ✅ Create a new study group
+// Create a new study group
 router.post("/", async (req, res) => {
   try {
     const newGroup = new StudyGroup(req.body);
@@ -112,26 +112,6 @@ router.post("/add-multiple", async (req, res) => {
     res.status(500).json({ message: "Server error. Could not add study groups." });
   }
 });
-// ✅ Join a study group
-// router.post("/join/:groupId/:userId", async (req, res) => {
-//   try {
-//     const group = await StudyGroup.findById(req.params.groupId);
-//     const user = await User.findById(req.params.userId);
-
-//     if (!group || !user) {
-//       return res.status(404).json({ message: "Group or user not found" });
-//     }
-
-//     if (!group.members.includes(user._id)) {
-//       group.members.push(user._id);
-//       await group.save();
-//     }
-
-//     res.json({ message: "Joined the study group successfully" });
-//   } catch (error) {
-//     res.status(500).json({ message: "Error joining study group" });
-//   }
-// });
 
 // Get Top 6 Study Groups
 router.get("/top6", async (req, res) => {
@@ -144,20 +124,109 @@ router.get("/top6", async (req, res) => {
   }
 });
 
-// ✅ Leave a study group
-router.post("/leave/:groupId/:userId", async (req, res) => {
+// Join a study group
+router.post("/join/:groupId", async (req, res) => {
   try {
-    const group = await StudyGroup.findById(req.params.groupId);
+    const { userId } = req.body;
+    const groupId = req.params.groupId;
+    const token = req.headers.authorization?.split(" ")[1]; // Extract token from Authorization header
+
+    // Validate inputs
+    if (!userId || !groupId) {
+      return res.status(400).json({ message: "User ID and group ID are required" });
+    }
+
+    // Validate MongoDB ObjectIds
+    if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid group ID or user ID" });
+    }
+
+    // Find the group
+    const group = await StudyGroup.findById(groupId);
     if (!group) {
       return res.status(404).json({ message: "Group not found" });
     }
 
-    group.members = group.members.filter((id) => id.toString() !== req.params.userId);
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if user is already a member
+    if (group.members.includes(userId)) {
+      return res.status(400).json({ message: "You are already a member of this group" });
+    }
+
+    // Update the group: add user to members and increment membersCount
+    group.members.push(userId);
+    group.membersCount = (group.membersCount || 0) + 1; // Increment membersCount
     await group.save();
 
-    res.json({ message: "Left the study group successfully" });
+    // Update the user: add group to joinedGroups
+    user.joinedGroups.push(groupId); // Store the groupId in user's joinedGroups
+    await user.save();
+
+    // Prepare response data
+    const updatedGroup = {
+      _id: group._id,
+      members: group.members,
+      membersCount: group.membersCount,
+      name: group.name, // Ensure name is included in the response
+    };
+
+    // Emit Socket.IO event (if using Socket.IO in your routes)
+    if (req.app.get("io")) {
+      req.app.get("io").emit("groupUpdated", updatedGroup);
+    }
+
+    res.status(200).json({ message: "Successfully joined the group", group: updatedGroup });
   } catch (error) {
-    res.status(500).json({ message: "Error leaving study group" });
+    console.error("Error joining group:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+});
+
+// Leave a study group
+// In studyGroupRoutes.js
+router.post("/leave/:groupId", authenticateUser, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const userId = req.body.userId || req.user._id; // Use userId from body or auth middleware
+
+    // Validate userId and groupId
+    if (!userId || !groupId) {
+      return res.status(400).json({ message: "User ID and group ID are required" });
+    }
+
+    // Find the group
+    const group = await StudyGroup.findById(groupId);
+    if (!group) return res.status(404).json({ message: "Group not found" });
+
+    // Check if user is a member
+    if (!group.members.includes(userId)) {
+      return res.status(400).json({ message: "You are not a member of this group" });
+    }
+
+    // Update the group: remove user from members and decrement membersCount
+    group.members = group.members.filter(id => id.toString() !== userId.toString());
+    group.membersCount = group.members.length; // Update count to match array length
+    await group.save();
+
+    // Update the user: remove group from joinedGroups
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    user.joinedGroups = user.joinedGroups.filter(id => id.toString() !== groupId.toString());
+    await user.save();
+
+    // Return the updated group data
+    res.status(200).json({ 
+      message: "Left the group successfully", 
+      group: { _id: group._id, members: group.members, membersCount: group.membersCount } 
+    });
+  } catch (error) {
+    console.error("Error leaving group:", error);
+    res.status(500).json({ message: error.message || "Server error" });
   }
 });
 
