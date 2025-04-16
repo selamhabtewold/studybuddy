@@ -1,22 +1,26 @@
-// src/context/SocketContext.jsx
-import React, { createContext, useContext, useEffect, useRef } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
 const SocketContext = createContext();
 
 export const SocketProvider = ({ children }) => {
-  const socketRef = useRef();
+  const socketRef = useRef(null);
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     socketRef.current = io("http://localhost:5000", {
       reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 20000,
+      transports: ["websocket", "polling"],
+      path: "/socket.io/", // Match server path
       withCredentials: true,
-      transports: ["websocket", "polling"], // Try both WebSocket and polling
-      timeout: 20000, // Increase timeout for slower connections
     });
 
     socketRef.current.on("connect", () => {
       console.log("Socket connected:", socketRef.current.id);
+      setSocket(socketRef.current);
     });
 
     socketRef.current.on("connect_error", (err) => {
@@ -25,6 +29,7 @@ export const SocketProvider = ({ children }) => {
 
     socketRef.current.on("disconnect", (reason) => {
       console.log("Socket disconnected:", reason);
+      setSocket(null);
     });
 
     return () => {
@@ -34,8 +39,17 @@ export const SocketProvider = ({ children }) => {
     };
   }, []);
 
+  const sendMessage = (message) => {
+    if (socketRef.current) {
+      socketRef.current.emit("message", message);
+    } else {
+      console.error("Socket is not connected!");
+    }
+  };
+
   const value = {
-    socket: socketRef.current,
+    socket,
+    sendMessage: socket ? sendMessage : () => {},
   };
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

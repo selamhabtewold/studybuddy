@@ -12,6 +12,7 @@ const classroomSchema = new mongoose.Schema({
   startTime: { type: Date }, // When the session actually starts (set when session begins)
   endTime: { type: Date }, // When the session ends
   isActive: { type: Boolean, default: false }, // Track if the session is active (starts at scheduled time)
+  roomName: { type: String }, // Add this field to store the meeting room name
 });
 
 classroomSchema.pre("save", function(next) {

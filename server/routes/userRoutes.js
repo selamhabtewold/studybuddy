@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import User from "../models/userModel.js";
 import authenticateUser from "../middleware/authMiddleware.js";
+import authenticateToken from "../middleware/authToken.js";
 
 dotenv.config();
 const router = express.Router();
@@ -28,7 +29,7 @@ router.post("/users", async (req, res) => {
   }
 });
 
-// **User Login**
+
 router.post("/users/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -36,7 +37,7 @@ router.post("/users/login", async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+password +role'); // Include password and role
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
@@ -48,13 +49,18 @@ router.post("/users/login", async (req, res) => {
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-    res.status(200).json({ message: "Login successful", userId: user._id, email: user.email, token });
+    res.status(200).json({
+      message: "Login successful",
+      userId: user._id,
+      email: user.email,
+      role: user.role, // Add role to the response
+      token,
+    });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
-
 
 
 // **Active Users Count**
@@ -113,5 +119,21 @@ router.put("/me", authenticateUser, async (req, res) => {
     res.status(500).json({ message: "Error updating user", error: error.message });
   }
 });
+
+
+// userRoutes.js
+router.get("/users/verify", authenticateToken, (req, res) => {
+  try {
+    res.status(200).json({
+      role: req.user.role, // Assuming req.user is set by authenticateToken middleware
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Middleware to authenticate token
+
+
 
 export default router;

@@ -4,14 +4,16 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { UserProvider } from "./context/UserContext"; 
 import { OnlineUsersProvider } from "./context/OnlineUsersContext";
+import { SocketProvider } from "./context/socketContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <BrowserRouter> {/* ✅ Router is here, so don't use another one in `App.js` */}
+  <BrowserRouter>
     <UserProvider>
       <OnlineUsersProvider>
-      <App />
+        <SocketProvider> {/* ✅ Wrap the entire app with SocketProvider */}
+          <App />
+        </SocketProvider>
       </OnlineUsersProvider>
-    
     </UserProvider>
   </BrowserRouter>
 );

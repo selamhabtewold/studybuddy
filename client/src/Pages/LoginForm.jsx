@@ -37,17 +37,28 @@ const LoginPage = () => {
       if (response.ok) {
         localStorage.setItem("authToken", data.token);
 
-        // Store user details in context
-        const userData = { id: data.userId, email: data.email, name: data.name };
+        // Store user details and role in context
+        const userData = {
+          id: data.userId,
+          email: data.email,
+          name: data.name,
+          role: data.role || "user", // Default to 'user' if role is not provided
+        };
         login(userData);
 
         setMessage("Login successful!");
-        navigate("/dashboard");
+        // Redirect based on role
+        if (userData.role === "admin") {
+          navigate("/admin-dashboard");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
-        setMessage(data.message);
+        setMessage(data.message || "Login failed");
       }
     } catch (error) {
       setMessage("Server error");
+      console.error("Login error:", error);
     } finally {
       setLoading(false);
     }

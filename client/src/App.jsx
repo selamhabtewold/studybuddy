@@ -12,7 +12,7 @@ import RegistrationForm from "./Pages/RegistrationForm";
 import UserDashboard from "./Pages/UserDashboard";
 import GroupPage from "./Pages/GroupPage";
 import ClassroomPage from "./Pages/ClassroomPage";
-import GroupChat from "./Pages/GroupChat";
+import CourseMaterialPage from "./Pages/CourseMaterialPage";
 
 function App() {
   return (
@@ -24,13 +24,13 @@ function App() {
         <Route path="/register" element={<RegistrationForm />} />
         <Route path="/course/:courseName" element={<CourseDescription />} />
         <Route path="/course-content/:courseName" element={<CourseContent />} />
+        <Route path="/course-material/:courseName" element={<CourseMaterialPage />} />
         <Route index element={<Home />} /> {/* Default route */}
         <Route path="/preferences" element={<UserPreferencesForm />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/group/:groupId" element={<GroupPage />} />
         <Route path="/classroom/:classroomId" element={<ClassroomPage />} />
-        <Route path="/groupchat/:groupId" element={<GroupChat />} />
       </Route>
     </Routes>
   );

@@ -2,7 +2,6 @@
 import express from "express";
 import Classroom from "../models/classroom.js";
 import authenticateUser from "../middleware/authMiddleware.js";
-
 const router = express.Router();
 
 router.post("/", authenticateUser, async (req, res) => {
@@ -133,6 +132,50 @@ router.get("/", authenticateUser, async (req, res) => {
     res.json(classrooms);
   } catch (error) {
     res.status(500).json({ message: "Error fetching created classrooms", error: error.message });
+  }
+});
+router.put("/:id/start", authenticateUser, async (req, res) => {
+  try {
+    const classroom = await Classroom.findById(req.params.id);
+    if (!classroom) return res.status(404).json({ message: "Classroom not found" });
+    if (classroom.creator.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Only the creator can start the classroom" });
+    }
+    if (classroom.isActive) return res.status(400).json({ message: "Classroom is already active" });
+
+    classroom.isActive = true;
+    classroom.roomName = `Classroom-${classroom._id}-${Date.now()}`; // Generate unique room name
+    await classroom.save();
+
+    const io = req.app.get("io");
+    io.emit("classroomStarted", { classroomId: classroom._id, roomName: classroom.roomName });
+
+    res.json(classroom);
+  } catch (error) {
+    console.error("Error starting classroom:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put("/:id/end", authenticateUser, async (req, res) => {
+  try {
+    const classroom = await Classroom.findById(req.params.id);
+    if (!classroom) return res.status(404).json({ message: "Classroom not found" });
+    if (classroom.creator.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Only the creator can end the classroom" });
+    }
+    if (!classroom.isActive) return res.status(400).json({ message: "Classroom is not active" });
+
+    classroom.isActive = false;
+    await classroom.save();
+
+    const io = req.app.get("io");
+    io.emit("classroomEnded", { classroomId: classroom._id });
+
+    res.json(classroom);
+  } catch (error) {
+    console.error("Error ending classroom:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

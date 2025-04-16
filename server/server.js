@@ -1,4 +1,3 @@
-// server.js (updated)
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -10,10 +9,18 @@ import courseRoutes from "./routes/courseRoutes.js";
 import studyGroupRoutes from "./routes/studyGroupRoutes.js";
 import classroomRoutes from "./routes/classroomRoutes.js";
 import User from "./models/userModel.js";
-import StudyGroup from "./models/studyGroup.js"; // Ensure this path is correct
-import mongoose from "mongoose"; // Ensure mongoose is imported
+import StudyGroup from "./models/studyGroup.js";
+import mongoose from "mongoose";
+import path from "path";
+import { fileURLToPath } from "url";
+import authenticateUser from "./middleware/authMiddleware.js";
+
 
 dotenv.config();
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 if (!process.env.MONGO_URI) {
   console.error("❌ Error: MONGO_URI is missing in your .env file");
@@ -34,23 +41,13 @@ const io = new Server(server, {
     origin: process.env.CLIENT_URL || "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
-    transports: ["websocket", "polling"], // Explicitly allow WebSocket and polling
+    transports: ["websocket", "polling"],
   },
+  path: "/socket.io/",
 });
 
-let onlineUsers = new Map(); // userId -> socket.id
+let onlineUsers = new Map();
 
-// Define a simple Message model for chat history (optional, for persistence)
-const Message = mongoose.model("Message", {
-  groupId: String,
-  userId: String,
-  userName: String,
-  message: String,
-  audioUrl: String,
-  fileUrl: String,
-  timestamp: Date,
-  messageId: String, // Ensure messageId is part of the model for uniqueness
-});
 
 io.on("connection", (socket) => {
   console.log(`🔵 New client connected: ${socket.id}`);
@@ -71,18 +68,15 @@ io.on("connection", (socket) => {
       const group = await StudyGroup.findById(groupId);
       if (!group) throw new Error("Group not found");
 
-      // Ensure members is an array, default to empty if undefined
       if (!Array.isArray(group.members)) {
         group.members = [];
       }
 
-      // Check if user is already a member (prevent duplicate joining)
       if (group.members.includes(userId)) {
         socket.emit("error", { message: "You are already a member of this group" });
         return;
       }
 
-      // Validate MongoDB ObjectId using mongoose
       if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(userId)) {
         socket.emit("error", { message: "Invalid group ID or user ID" });
         return;
@@ -94,21 +88,18 @@ io.on("connection", (socket) => {
         return;
       }
 
-      // Add user to members array and update count
       group.members.push(userId);
-      group.membersCount = group.members.length; // Update count to match array length
+      group.membersCount = group.members.length;
       await group.save();
 
-      // Update user's joinedGroups
       user.joinedGroups.push(groupId);
       await user.save();
 
-      // Emit updated group to all clients
       const updatedGroup = {
         _id: group._id,
-        members: group.members, // Send the members array
-        membersCount: group.membersCount, // Send the count
-        name: group.name, // Ensure name is included
+        members: group.members,
+        membersCount: group.membersCount,
+        name: group.name,
       };
       io.emit("groupUpdated", updatedGroup);
 
@@ -120,15 +111,17 @@ io.on("connection", (socket) => {
     updateOnlineUsers();
   });
 
-  socket.on("notifyClassroom", ({ classroomId, users }) => {
+  socket.on("notifyClassroom", ({ classroomId, users, creatorName, classroomName, startTime }) => {
     console.log(`Notifying users for classroom ${classroomId}:`, users);
     users.forEach((userId) => {
       const socketId = onlineUsers.get(userId);
       if (socketId) {
-        io.to(socketId).emit("classroomInvite", { 
-          classroomId, 
-          creator: userId, // Add creator for context
-          message: "You’ve been invited to join a classroom. Join or decline?"
+        io.to(socketId).emit("classroomInvite", {
+          classroomId,
+          creator: userId,
+          creatorName,
+          classroomName,
+          message: `You've been invited to join "${classroomName}" by ${creatorName} starting at ${new Date(startTime).toLocaleString()}. Join or decline?`,
         });
         console.log(`Sent invite to ${userId} for classroom ${classroomId}`);
         updateClassroomInvitedUsers(classroomId, userId);
@@ -144,48 +137,49 @@ io.on("connection", (socket) => {
   });
 
   socket.on("joinGroupChat", ({ userId, groupId }) => {
-    // Join the group chat room
     socket.join(`group_${groupId}`);
     console.log(`User ${userId} joined group chat room for group ${groupId}`);
-    // Emit updated member count to all users in the room
+    // Notify other members of the join (optional)
+    const user = onlineUsers.get(userId);
+    if (user) {
+      io.to(`group_${groupId}`).emit("userJoinedGroup", { groupId, userId, userName: user.name || `User ${userId}` });
+    }
     broadcastMemberCount(groupId);
   });
 
-  socket.on("sendGroupMessage", async ({ userId, groupId, message, userName, audioUrl, fileUrl, messageId }) => {
-    console.log(`Message from ${userId} (${userName}) in group ${groupId}:`, { message, audioUrl, fileUrl, messageId });
-    // Fetch the sender's name if not provided (optional, for robustness)
+  socket.on("sendGroupMessage", async ({ userId, groupId, message, userName, audioUrl, audioDuration, fileUrl, fileName, messageId }) => {
+    console.log(`Message from ${userId} (${userName}) in group ${groupId}:`, { message, audioUrl, fileUrl, fileName, messageId });
     let senderName = userName;
     if (!senderName) {
       const user = await User.findById(userId).select("name");
       senderName = user?.name || "Anonymous";
     }
 
-    // Broadcast message to all users in the group chat room
     const messageData = {
       userId,
       groupId,
       message,
-      userName: senderName, // Include the sender's name
+      audioUrl,
+      audioDuration: audioDuration || 0,
+      fileUrl,
+      fileName: fileName || "Unnamed File",
+      userName: senderName,
       timestamp: new Date().toISOString(),
-      messageId, // Ensure messageId is included for uniqueness
+      messageId: messageId || `${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     };
 
-    if (message) messageData.message = message;
-    if (audioUrl) messageData.audioUrl = audioUrl;
-    if (fileUrl) messageData.fileUrl = fileUrl;
-
-    // Save message to database for persistence
-    await Message.create(messageData);
-
-    // Broadcast to all users in the group (including the sender for consistency)
-    console.log(`Broadcasting message to group ${groupId}:`, messageData);
-    io.to(`group_${groupId}`).emit("receiveGroupMessage", messageData);
+    try {
+      await Message.create(messageData);
+      io.to(`group_${groupId}`).emit("receiveGroupMessage", messageData);
+      console.log(`Broadcasting message to group ${groupId}:`, messageData);
+    } catch (error) {
+      console.error("Error saving or broadcasting message:", error);
+    }
   });
 
-  socket.on("typing", ({ userId, groupId }) => {
-    // Broadcast typing indicator to all users in the group
-    console.log(`Broadcasting typing for user ${userId} in group ${groupId}`);
-    io.to(`group_${groupId}`).emit("typing", { userId, groupId });
+  socket.on("typing", ({ userId, userName, groupId }) => {
+    console.log(`Broadcasting typing for user ${userName || userId} in group ${groupId}`);
+    io.to(`group_${groupId}`).emit("typing", { userId, userName, groupId });
   });
 
   socket.on("leaveGroup", async ({ userId, groupId }) => {
@@ -194,35 +188,30 @@ io.on("connection", (socket) => {
       const group = await StudyGroup.findById(groupId);
       if (!group) throw new Error("Group not found");
 
-      // Ensure members is an array
       if (!Array.isArray(group.members)) {
         group.members = [];
       }
 
-      // Check if user is a member
       if (!group.members.includes(userId)) {
         socket.emit("error", { message: "You are not a member of this group" });
         return;
       }
 
-      // Remove user from members and decrement membersCount
-      group.members = group.members.filter(id => id.toString() !== userId);
-      group.membersCount = Math.max(0, group.members.length); // Ensure non-negative
+      group.members = group.members.filter((id) => id.toString() !== userId);
+      group.membersCount = Math.max(0, group.members.length);
       await group.save();
 
-      // Update user to remove group from joinedGroups
       const user = await User.findById(userId);
       if (user) {
-        user.joinedGroups = user.joinedGroups.filter(id => id.toString() !== groupId);
+        user.joinedGroups = user.joinedGroups.filter((id) => id.toString() !== groupId);
         await user.save();
       }
 
-      // Emit updated group to all clients
       const updatedGroup = {
         _id: group._id,
         members: group.members,
         membersCount: group.membersCount,
-        name: group.name, // Ensure name is included
+        name: group.name,
       };
       io.emit("groupUpdated", updatedGroup);
 
@@ -232,6 +221,39 @@ io.on("connection", (socket) => {
       socket.emit("error", { message: error.message });
     }
     updateOnlineUsers();
+  });
+
+  socket.on("classroomStarted", async ({ classroomId, roomName }) => {
+    console.log(`Classroom ${classroomId} started with roomName: ${roomName}`);
+    try {
+      const Classroom = mongoose.model("Classroom");
+      const classroom = await Classroom.findById(classroomId);
+      if (!classroom) throw new Error("Classroom not found");
+
+      const usersToNotify = [...classroom.allowedUsers, classroom.creator].filter((userId, index, self) => self.indexOf(userId) === index);
+      usersToNotify.forEach((userId) => {
+        const socketId = onlineUsers.get(userId.toString());
+        if (socketId) {
+          io.to(socketId).emit("classroomStarted", { classroomId, roomName });
+          console.log(`Notified user ${userId} about classroom ${classroomId} start`);
+        } else {
+          console.warn(`User ${userId} not online for classroom ${classroomId} start notification`);
+        }
+      });
+    } catch (error) {
+      console.error("Error handling classroomStarted:", error);
+    }
+  });
+
+  socket.on("classroomEnded", ({ classroomId }) => {
+    console.log(`Classroom ${classroomId} ended`);
+    io.emit("classroomEnded", { classroomId });
+  });
+
+  socket.on("classroomDeleted", ({ classroomId }) => {
+    console.log(`Classroom ${classroomId} deleted`);
+    io.emit("classroomDeleted", { classroomId });
+    io.emit("clearInvitation", { classroomId });
   });
 
   socket.on("disconnect", () => {
@@ -250,28 +272,11 @@ io.on("connection", (socket) => {
     }
   });
 
-  // New Socket.IO listeners for classroom events
-  socket.on("classroomEnded", (data) => {
-    console.log(`Classroom ${data.classroomId} ended`);
-    // No action needed here; handled by backend route
-  });
-
-  socket.on("classroomDeleted", (data) => {
-    console.log(`Classroom ${data.classroomId} deleted`);
-    // Notify clients to clear invitations
-    io.emit("clearInvitation", { classroomId: data.classroomId });
-  });
-
   socket.on("connect_error", (error) => {
     console.error("Socket.IO connection error:", error.message);
   });
-
-  socket.on("disconnect", (reason) => {
-    console.log(`Socket disconnected: ${reason}`);
-  });
 });
 
-// New function to broadcast member count to group chat room
 async function broadcastMemberCount(groupId) {
   try {
     const group = await StudyGroup.findById(groupId).select("membersCount");
@@ -374,16 +379,41 @@ async function updateClassroomResponse(classroomId, userId, response) {
   }
 }
 
-// Middleware
-app.use(cors({ 
-  origin: process.env.CLIENT_URL || "http://localhost:5173", 
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Include OPTIONS for preflight
-  allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
-}));
-app.use(express.json());
 
-// Store io in app for use in routes
+// Middleware
+// app.use(cors({
+//   origin: process.env.CLIENT_URL || "http://localhost:5173",
+//   credentials: true,
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//   allowedHeaders: ["Content-Type", "Authorization"],
+// }));
+
+// Update CORS configuration
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost:5173",
+  "http://192.168.137.1:5173", // Add your frontend's origin
+].filter(Boolean); // Remove undefined/null values
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g., Postman) or from allowed origins
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
+app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Store io in app for use in routes (if needed)
 app.set("io", io);
 
 // Routes
@@ -391,6 +421,48 @@ app.use("/api", userRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/study-groups", studyGroupRoutes);
 app.use("/api/classrooms", classroomRoutes);
+
+
+const messageSchema = new mongoose.Schema({
+    groupId: { type: String, required: true },
+    userId: { type: String, required: true },
+    userName: { type: String, required: true },
+    message: { type: String },
+    audioUrl: { type: String },
+    audioDuration: { type: Number, default: 0 },
+    fileUrl: { type: String },
+    fileName: { type: String, default: "Unnamed File" },
+    fileSizeKB: { type: Number },
+    fileType: { type: String },
+    timestamp: { type: Date, default: Date.now },
+    messageId: { type: String, required: true, unique: true },
+  });
+
+const Message = mongoose.model('Message', messageSchema);
+
+// GET messages for a group
+app.get('/api/study-groups/:groupId/messages', authenticateUser, async (req, res) => {
+  try {
+    const messages = await Message.find({ groupId: req.params.groupId }).sort('timestamp');
+    res.json({ messages });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching messages', error });
+  }
+});
+
+// POST a new message
+app.post('/api/study-groups/messages', authenticateUser, async (req, res) => {
+  try {
+    const { userId, groupId, userName, message, timestamp, messageId, audioUrl, fileUrl } = req.body;
+    const newMessage = new Message({ userId, groupId, userName, message, timestamp, messageId, audioUrl, fileUrl });
+    await newMessage.save();
+    res.status(201).json({ message: 'Message saved', messageId });
+  } catch (error) {
+    res.status(500).json({ message: 'Error saving message', error });
+  }
+});
+
+
 
 // Start server
 const PORT = process.env.PORT || 5000;

@@ -13,13 +13,16 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@zoom/meetingsdk": "^3.13.0",
     "bcryptjs": "^3.0.2",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "mongoose": "^8.11.0",
-    "socket.io": "^4.8.1"
+    "multer": "^1.4.5-lts.2",
+    "socket.io": "^4.8.1",
+    "sweetalert2": "^11.17.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

@@ -1,44 +1,63 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      process: "process", // Use the root of the process package, not /browser
-      buffer: "buffer", // Map buffer to the polyfill
-      global: "globalthis", // Map global to globalthis
-      randombytes: "randombytes", // Ensure randombytes is resolved
-      util: "util", // Map util to the polyfill
-      "readable-stream": "readable-stream", // Ensure readable-stream is resolved
+      process: 'process',
+      buffer: 'buffer',
+      global: 'globalthis',
+      randombytes: 'randombytes',
+      util: 'util',
+      'readable-stream': 'readable-stream',
     },
   },
   define: {
-    "process.env": {}, // Define process.env for compatibility
-    global: "globalThis", // Explicitly define global as globalThis for the browser
+    'process.env': {},
+    global: 'globalThis',
   },
   optimizeDeps: {
     include: [
-      "buffer",
-      "process",
-      "simple-peer",
-      "globalthis",
-      "randombytes",
-      "util",
-      "readable-stream",
+      'buffer',
+      'process',
+      'simple-peer',
+      'globalthis',
+      'randombytes',
+      'util',
+      'readable-stream',
     ],
-    force: true, // Force re-optimization of dependencies
+    force: true,
   },
   build: {
     commonjsOptions: {
-      transformMixedEsModules: true, // Handle mixed ES/CommonJS modules
-      include: [/simple-peer/, /readable-stream/, /randombytes/, /util/, /buffer/, /process/], // Ensure all are transformed
+      transformMixedEsModules: true,
+      include: [/simple-peer/, /readable-stream/, /randombytes/, /util/, /buffer/, /process/],
     },
-    assetsDir: "assets", // Ensure assets (like images) are output to the assets directory
+    assetsDir: 'assets',
   },
   server: {
-    cors: true, // Ensure CORS is enabled for development
+    cors: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        // Removed rewrite to match backend /api prefix
+        onProxyReq: (proxyReq, req) => {
+          console.log('Proxying request:', req.url, 'to', `http://127.0.0.1:5000${req.url}`);
+        },
+        onProxyError: (err, req, res) => {
+          console.error('Proxy error:', err.message, 'for request:', req.url);
+        },
+      },
+      '/socket.io': {
+        target: 'http://127.0.0.1:5000',
+        ws: true,
+        changeOrigin: true,
+      },
+    },
+    host: '0.0.0.0',
+    port: 5173,
   },
-  // Explicitly configure asset handling
-  assetsInclude: ["**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.gif", "**/*.svg"], // Include common image formats
+  assetsInclude: ['**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.gif', '**/*.svg'],
 });
